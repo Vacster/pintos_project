@@ -4,8 +4,6 @@
 #include "threads/thread.h"
 #include "threads/synch.h"
 
-typedef int pid_t;
-
 #define PID_ERROR         ((pid_t) -1)
 #define PID_INITIALIZING  ((pid_t) -2)
 
@@ -58,4 +56,3 @@ struct mmap_desc {
 #endif
 
 #endif /* userprog/process.h */
-

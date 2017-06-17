@@ -20,6 +20,7 @@ typedef int mapid_t;
 #define EXIT_FAILURE 1          /* Unsuccessful execution. */
 
 /* Projects 2 and later. */
+bool mine (void * info, pid_t thread_id);
 void halt (void) NO_RETURN;
 void exit (int status) NO_RETURN;
 pid_t exec (const char *file);

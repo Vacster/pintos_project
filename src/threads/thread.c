@@ -108,6 +108,7 @@ thread_init (void)
   initial_thread = running_thread ();
   init_thread (initial_thread, "main", PRI_DEFAULT);
   initial_thread->status = THREAD_RUNNING;
+  initial_thread->times_running += 1;
   initial_thread->tid = allocate_tid ();
   initial_thread->sleep_endtick = 0; // a dummy value
 }
@@ -287,6 +288,7 @@ thread_block (void)
   ASSERT (!intr_context ());
   ASSERT (intr_get_level () == INTR_OFF);
 
+  thread_current ()->times_waiting += 1;
   thread_current ()->status = THREAD_BLOCKED;
   schedule ();
 }
@@ -422,6 +424,26 @@ thread_foreach (thread_action_func *func, void *aux)
     }
 }
 
+void
+get_thread (struct t_info * info, pid_t thread_id)
+{
+  struct list_elem *e;
+
+  ASSERT (intr_get_level () == INTR_OFF);
+
+  for (e = list_begin (&all_list); e != list_end (&all_list);
+       e = list_next (e))
+    {
+      struct thread *t = list_entry (e, struct thread, allelem);
+      if (t->tid == thread_id)
+      {
+        info->times_running = t->times_running;
+        info->times_waiting = t->times_waiting;
+        info->priority = t->priority;
+        break;
+      }
+    }
+}
 
 /* Sets the current thread's priority to NEW_PRIORITY when a donation
    was not performed. */
@@ -589,15 +611,18 @@ init_thread (struct thread *t, const char *name, int priority)
   ASSERT (name != NULL);
 
   memset (t, 0, sizeof *t);
+  t->times_waiting = 1;
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->times_running = 0;
   t->original_priority = priority;
   t->waiting_lock = NULL;
   list_init (&t->locks);
   t->sleep_endtick = 0;
   t->magic = THREAD_MAGIC;
+
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
@@ -667,6 +692,7 @@ thread_schedule_tail (struct thread *prev)
 
   /* Mark us as running. */
   cur->status = THREAD_RUNNING;
+  cur->times_running += 1;
 
   /* Start new time slice. */
   thread_ticks = 0;

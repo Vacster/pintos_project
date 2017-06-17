@@ -36,6 +36,8 @@ static int memread_user (void *src, void *des, size_t bytes);
 enum fd_search_filter { FD_FILE = 1, FD_DIRECTORY = 2 };
 static struct file_desc* find_file_desc(struct thread *, int fd, enum fd_search_filter flag);
 
+bool sys_mine (struct t_info * info, pid_t thread_id);
+void print_info(struct thread *t, void *aux UNUSED);
 void sys_halt (void);
 void sys_exit (int);
 pid_t sys_exec (const char *cmdline);
@@ -104,6 +106,7 @@ syscall_handler (struct intr_frame *f)
   // Dispatch w.r.t system call number
   // SYS_*** constants are defined in syscall-nr.h
   switch (syscall_number) {
+
   case SYS_HALT: // 0
     {
       sys_halt();
@@ -252,6 +255,18 @@ syscall_handler (struct intr_frame *f)
       break;
     }
 
+  case SYS_MINE:
+    {
+      struct t_info * info;
+      pid_t thread_id;
+
+      memread_user(f->esp + 4, &info, sizeof(info));
+      memread_user(f->esp + 8, &thread_id, sizeof(thread_id));
+
+      f->eax = sys_mine(info, thread_id);
+      break;
+    }
+
 #ifdef VM
   case SYS_MMAP: // 13
     {
@@ -350,6 +365,17 @@ syscall_handler (struct intr_frame *f)
 }
 
 /****************** System Call Implementations ********************/
+
+void print_info(struct thread *t, void *aux UNUSED){
+  printf("Thread: %d\tT_Run: %d\tT_Wait: %d\tPriority: %d\n", t->tid, t->times_running, t->times_waiting, t->priority);
+}
+
+bool sys_mine(struct t_info * info, pid_t thread_id) {
+  enum intr_level oldlevel = intr_disable ();
+  get_thread(info, thread_id);
+  intr_set_level (oldlevel);
+  return true;
+}
 
 void sys_halt(void) {
   shutdown_power_off();

@@ -9,6 +9,8 @@
 #include "vm/page.h"
 #endif
 
+typedef int pid_t;
+
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -86,12 +88,15 @@ typedef int tid_t;
    blocked state is on a semaphore wait list. */
 struct thread
   {
+    /* things to show */
+    int times_running;
+    int times_waiting;
+    int priority;                       /* Priority. */
     /* Owned by thread.c. */
     tid_t tid;                          /* Thread identifier. */
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
     int original_priority;              /* Priority, before donation */
     struct list_elem allelem;           /* List element for all threads list. */
     struct list_elem waitelem;          /* List element, stored in the wait_list queue */
@@ -139,6 +144,13 @@ struct thread
     unsigned magic;                     /* Detects stack overflow. */
   };
 
+struct t_info
+  {
+    int times_running;
+    int times_waiting;
+    int priority;
+  };
+
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
    Controlled by kernel command-line option "-o mlfqs". */
@@ -168,6 +180,7 @@ void thread_yield (void);
 /* Performs some operation on thread t, given auxiliary data AUX. */
 typedef void thread_action_func (struct thread *t, void *aux);
 void thread_foreach (thread_action_func *, void *);
+void get_thread (struct t_info * info, pid_t thread_id);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
