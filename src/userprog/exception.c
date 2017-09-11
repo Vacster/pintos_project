@@ -151,6 +151,7 @@ page_fault (struct intr_frame *f)
 
   /* Count page faults. */
   page_fault_cnt++;
+  //printf("Page faults: %llu\n", page_fault_cnt);
 
   /* Determine cause. */
   not_present = (f->error_code & PF_P) == 0;
@@ -165,10 +166,25 @@ page_fault (struct intr_frame *f)
           user ? "user" : "kernel");
 #endif
 
+  struct thread *curr = thread_current(); /* Current thread. */
+  curr->page_faults_counter += 1;
+  #ifdef FIFO
+  printf("Type: FIFO\tThread: %d\tPFaults: %d\n", curr->tid, curr->page_faults_counter);
+  #endif
+
+  #ifdef LRU
+  printf("Type: LRU\tThread: %d\tPFaults: %d\n", curr->tid, curr->page_faults_counter);
+  #endif
+
+  #ifdef CHANCE
+  printf("Type: SECOND\tThread: %d\tPFaults: %d\n", curr->tid, curr->page_faults_counter);
+  #endif
+
 #if VM
   /* Virtual memory handling.
    * First, bring in the page to which fault_addr refers. */
-  struct thread *curr = thread_current(); /* Current thread. */
+  // struct thread *curr = thread_current(); /* Current thread. */
+  // curr->page_faults_counter += 1;
   void* fault_page = (void*) pg_round_down(fault_addr);
 
   if (!not_present) {
@@ -220,4 +236,3 @@ PAGE_FAULT_VIOLATED_ACCESS:
           user ? "user" : "kernel");
   kill (f);
 }
-

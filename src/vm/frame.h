@@ -2,12 +2,13 @@
 #define VM_FRAME_H
 
 #include <hash.h>
+#include "list.h"
 #include "lib/kernel/hash.h"
 
 #include "threads/synch.h"
 #include "threads/palloc.h"
 
-
+void lru_push(void *upage);
 /* Functions for Frame manipulation. */
 
 void vm_frame_init (void);

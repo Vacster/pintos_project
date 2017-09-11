@@ -17,9 +17,9 @@ static struct lock frame_lock;
 
 /* A mapping from physical address to frame table entry. */
 static struct hash frame_map;
+static struct list frame_list;      /* the list */
 
 /* A (circular) list of frames for the clock eviction algorithm. */
-static struct list frame_list;      /* the list */
 static struct list_elem *clock_ptr; /* the pointer in clock algorithm */
 
 static unsigned frame_hash_func(const struct hash_elem *elem, void *aux);
@@ -71,7 +71,6 @@ vm_frame_allocate (enum palloc_flags flags, void *upage)
 
     /* first, swap out the page */
     struct frame_table_entry *f_evicted = pick_frame_to_evict( thread_current()->pagedir );
-
 #if DEBUG
     printf("f_evicted: %x th=%x, pagedir = %x, up = %x, kp = %x, hash_size=%d\n", f_evicted, f_evicted->t,
         f_evicted->t->pagedir, f_evicted->upage, f_evicted->kpage, hash_size(&frame_map));
@@ -171,30 +170,78 @@ vm_frame_do_free (void *kpage, bool free_page)
 
 /** Frame Eviction Strategy : The Clock Algorithm */
 struct frame_table_entry* clock_frame_next(void);
+struct frame_table_entry* fifo(void);
 struct frame_table_entry* pick_frame_to_evict( uint32_t *pagedir )
 {
   size_t n = hash_size(&frame_map);
   if(n == 0) PANIC("Frame table is empty, can't happen - there is a leak somewhere");
 
-  size_t it;
-  for(it = 0; it <= n + n; ++ it) // prevent infinite loop. 2n iterations is enough
-  {
-    struct frame_table_entry *e = clock_frame_next();
-    // if pinned, continue
-    if(e->pinned) continue;
-    // if referenced, give a second chance.
-    else if( pagedir_is_accessed(pagedir, e->upage)) {
-      pagedir_set_accessed(pagedir, e->upage, false);
-      continue;
+  struct frame_table_entry *e;
+
+  #ifdef CHANCE
+    size_t it;
+    for(it = 0; it <= n + n; ++ it) // prevent infinite loop. 2n iterations is enough
+    {
+      e = clock_frame_next();
+      // if pinned, continue
+      if(e->pinned) continue;
+      // if referenced, give a second chance.
+      else if( pagedir_is_accessed(pagedir, e->upage)) {
+        pagedir_set_accessed(pagedir, e->upage, false);
+        continue;
+      }
+
+      // OK, here is the victim : unreferenced since its last chance
+      return e;
     }
-
-    // OK, here is the victim : unreferenced since its last chance
+  #else
+    e = fifo();
     return e;
-  }
+  #endif
 
-  PANIC ("Can't evict any frame -- Not enough memory!\n");
+  PANIC ("No type defined or can't evict any frame -- Not enough memory!\n");
 }
-struct frame_table_entry* clock_frame_next(void)
+
+void
+lru_push(void *upage)
+{
+  if (list_empty(&frame_list))
+    PANIC("Frame table is empty, can't happen - there is a leak somewhere");
+
+  size_t n = hash_size(&frame_map);
+  size_t it;
+
+  clock_ptr = list_begin(&frame_list);
+  struct frame_table_entry *e;
+
+  for(it = 0; it <= n; ++ it)
+  {
+    e = list_entry(clock_ptr, struct frame_table_entry, lelem);
+    if(e->upage == upage)
+      break;
+    clock_ptr = list_next(clock_ptr);
+  }
+  //Update it
+  void *old_back = list_back(&frame_list);
+  list_remove(clock_ptr);
+  list_push_back(&frame_list, clock_ptr);
+  // printf("Upage: %p\tLelem: %p\tOld Back: %p\tNew Back: %p\tFront: %p\n", upage, clock_ptr, old_back, list_back(&frame_list), list_front(&frame_list));
+}
+
+struct
+frame_table_entry* fifo(void)
+{
+  if (list_empty(&frame_list))
+    PANIC("Frame table is empty, can't happen - there is a leak somewhere");
+
+  clock_ptr = list_front(&frame_list);
+  struct frame_table_entry *e = list_entry(clock_ptr, struct frame_table_entry, lelem);
+  // printf("Front to evict: %p\n", e);
+  return e;
+}
+
+struct
+frame_table_entry* clock_frame_next(void)
 {
   if (list_empty(&frame_list))
     PANIC("Frame table is empty, can't happen - there is a leak somewhere");

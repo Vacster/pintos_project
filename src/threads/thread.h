@@ -89,6 +89,7 @@ typedef int tid_t;
 struct thread
   {
     /* things to show */
+    int page_faults_counter;
     int times_running;
     int times_waiting;
     int priority;                       /* Priority. */
@@ -149,6 +150,7 @@ struct t_info
     int times_running;
     int times_waiting;
     int priority;
+    int page_faults;
   };
 
 /* If false (default), use round-robin scheduler.

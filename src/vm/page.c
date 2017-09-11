@@ -104,6 +104,7 @@ vm_supt_set_swap (struct supplemental_page_table *supt, void *page, swap_index_t
   spte = vm_supt_lookup(supt, page);
   if(spte == NULL) return false;
 
+  // printf("KPAGE: %p\n", spte->kpage);
   spte->status = ON_SWAP;
   spte->kpage = NULL;
   spte->swap_index = swap_index;
@@ -200,6 +201,11 @@ vm_load_page(struct supplemental_page_table *supt, uint32_t *pagedir, void *upag
 
   if(spte->status == ON_FRAME) {
     // already loaded
+    #ifdef LRU
+      lru_push(upage);
+    #endif
+    //With the upage requested we could iterate frame_list in frame.c and
+    //update the value that should be added to frame_table_entry
     return true;
   }
 

@@ -440,6 +440,7 @@ get_thread (struct t_info * info, pid_t thread_id)
         info->times_running = t->times_running;
         info->times_waiting = t->times_waiting;
         info->priority = t->priority;
+        info->page_faults = t->page_faults_counter;
         break;
       }
     }
@@ -617,6 +618,7 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->times_running = 0;
+  t->page_faults_counter = 0;
   t->original_priority = priority;
   t->waiting_lock = NULL;
   list_init (&t->locks);

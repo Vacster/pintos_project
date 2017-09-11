@@ -17,6 +17,7 @@ struct t_info
     int times_running;
     int times_waiting;
     int priority;
+    int page_faults;
   };
 
 void print_info(struct t_info * info, pid_t id, int tmp);
@@ -33,10 +34,11 @@ main (void)
   info.times_waiting = 0;
   info.times_running = 0;
   info.priority = 0;
+  info.page_faults = 0;
 
   t[0] = exec("child_sort");
   t[1] = exec("matmult");
-  t[2] = exec("mkdir pollo");
+  t[2] = exec("page-shuffle");
   printf("Created threads num: %d, %d, and %d\n", t[0], t[1], t[2]);
 
   for(tmp = 0; tmp < t_amount; tmp++)
@@ -53,6 +55,7 @@ main (void)
       info.times_waiting = 0;
       info.times_running = 0;
       info.priority = 0;
+      info.page_faults = 0;
       mine(&info, t[tmp]);
       print_info(&info, t[tmp], tmp);
     }
@@ -73,6 +76,6 @@ print_info(struct t_info * info, pid_t id, int tmp)
   }
   else
   {
-    printf("Thread: %d\tT_Run: %d\tT_Wait: %d\tPriority: %d\n", id, info->times_running, info->times_waiting, info->priority);
+    printf("Thread: %d\tPage Faults: %d\n", id, info->page_faults);
   }
 }
